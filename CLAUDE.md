@@ -13,7 +13,7 @@ prefer clear, conventional code over clever code.
 - Add a dependency: `uv add <pkg>` (dev: `uv add --dev <pkg>`), then
   `uv export --format requirements-txt --no-hashes -o requirements.txt`
 - Migrations: `uv run alembic revision --autogenerate -m "<msg>"` then `uv run alembic upgrade head`
-- Database: Neon serverless PostgreSQL. Branch `main` = dev (`DATABASE_URL`),
+- Database: Neon serverless PostgreSQL. Branch `production` (Neon default) = dev (`DATABASE_URL`),
   branch `test` = pytest (`TEST_DATABASE_URL`). Use the DIRECT endpoint (no `-pooler`).
 - Neon strings end in `?sslmode=require&channel_binding=require`; asyncpg rejects these.
   db.py must convert the scheme to `postgresql+asyncpg://`, strip those query params and pass
@@ -55,8 +55,8 @@ docs/                     screenshots/, ai-logs/, AI_USAGE.md
   No queries, no business rules, no `if` checks on data in routes.
 - Services raise domain exceptions from `app/core/exceptions.py` (`EventNotFoundError`, `RegistrationNotFoundError`,
   `DuplicateRegistrationError`, `EventFullError`, `CapacityBelowRegistrationsError`,
-  `EmailAlreadyRegisteredError`, `InvalidCredentialsError`). Services never import `HTTPException`.
-- One exception handler registered in `app/main.py` maps domain exceptions to 404 / 409 / 401 with body
+  `EmailAlreadyRegisteredError`, `InvalidCredentialsError`, `NotRegistrationOwnerError`). Services never import `HTTPException`.
+- One exception handler registered in `app/main.py` maps domain exceptions to 404 / 409 / 401 / 403 with body
   `{"detail": "<human-readable message>"}`.
 - Everything async: `AsyncSession`, `await session.execute(select(...))`. No sync DB calls.
 
@@ -65,15 +65,18 @@ docs/                     screenshots/, ai-logs/, AI_USAGE.md
 - events: id, title, description, event_date (date), location, max_capacity (CHECK > 0),
   created_by -> users.id, created_at, updated_at; registrations relationship with
   cascade="all, delete-orphan"
-- registrations: id, event_id -> events.id (ondelete CASCADE), employee_name,
-  employee_email, registered_at; UniqueConstraint(event_id, employee_email)
+- registrations: id, event_id -> events.id (ondelete CASCADE), user_id -> users.id,
+  registered_at; UniqueConstraint(event_id, user_id). Registering REQUIRES LOGIN:
+  the registrant is always the current user.
 
 ## Validation (app/schemas/)
 - EventCreate: title stripped 1-200, description optional <=2000, event_date not in past,
   location 1-200, max_capacity gt=0 le=10000
 - EventUpdate: same fields all optional; service applies model_dump(exclude_unset=True)
 - EventRead: all columns + registered_count + seats_left; from_attributes=True
-- RegistrationCreate: employee_name 1-100, employee_email EmailStr
+- Registration has NO request body (user comes from the token); event id path param
+  is `Path(gt=0)` so bad ids give 422. RegistrationRead: id, event_id, registered_at,
+  user name and email.
 - Every request schema has a json_schema_extra example.
 
 ## API contract
@@ -87,15 +90,15 @@ docs/                     screenshots/, ai-logs/, AI_USAGE.md
 | GET | /events/{id} | public | 200 | 404 |
 | PUT | /events/{id} | token | 200 | 401, 404, 409 (capacity below sign-ups), 422 |
 | DELETE | /events/{id} | token | 204 | 401, 404 |
-| POST | /events/{id}/registrations | public | 201 | 404, 409 duplicate, 409 full, 422 |
-| GET | /events/{id}/registrations?skip&limit | public | 200 | 404 |
-| DELETE | /registrations/{id} | public | 204 | 404 |
+| POST | /events/{id}/registrations | token | 201 | 401, 404, 409 duplicate, 409 full, 422 |
+| GET | /events/{id}/registrations?skip&limit | token | 200 | 401, 404 |
+| DELETE | /registrations/{id} | token (own only) | 204 | 401, 403 not owner, 404 |
 | GET | /health | public | 200 | - |
 
 - Pagination: skip >= 0 default 0; limit 1-100 default 10. Order by event_date, id.
 - title filter: ILIKE '%value%'; date filter: exact match on event_date; combinable.
 - Registration service: lock the event row with `.with_for_update()`, then check
-  exists (404) -> duplicate email (409) -> seats left (409), then insert.
+  exists (404) -> current user already registered (409) -> seats left (409), then insert.
 - Auth: PyJWT (HS256, secret from settings), pwdlib argon2 hashing,
   OAuth2PasswordBearer(tokenUrl="/auth/login"); 401 includes WWW-Authenticate: Bearer.
 - Every route has tags, summary, description, response_model, status_code and
@@ -119,9 +122,10 @@ docs/                     screenshots/, ai-logs/, AI_USAGE.md
 
 ## Git workflow (graded)
 - Never commit directly to main except the initial scaffold.
-- One branch per feature: feature/project-setup, feature/event-crud,
-  feature/validation-error-handling, feature/registrations, feature/pagination-filtering,
-  feature/jwt-auth, feature/api-docs, feature/frontend, docs/submission.
+- One branch per feature, in this order: feature/project-setup, feature/event-crud,
+  feature/validation-error-handling, feature/jwt-auth, feature/pagination-filtering,
+  feature/registrations, feature/api-docs, feature/frontend, docs/submission.
+  (Auth comes before registrations because registering requires login.)
 - Small commits after each working step, Conventional Commits
   (`feat(events): ...`, `fix(...)`, `test(...)`, `docs(...)`, `chore(...)`).
 - Before the last commit on a branch: ruff check, ruff format, pytest.
@@ -147,3 +151,5 @@ docs/                     screenshots/, ai-logs/, AI_USAGE.md
 - Always present a plan first and wait for approval before editing files.
 - After finishing a phase, summarise what changed and explain new functions simply.
 - Ask before adding any dependency not listed above.
+- The human-facing plan (phases, prompts, schedule, video script) is `docs/DEVELOPMENT_PLAN.md`.
+  Read it when asked about a phase. If it ever disagrees with this file, this file wins.
