@@ -3,3 +3,7 @@
 Every model is re-exported here so that importing `app.models` registers all
 tables on `Base.metadata`, which Alembic autogenerate relies on.
 """
+
+from app.models.event import Event
+
+__all__ = ["Event"]
