@@ -1,14 +1,14 @@
 """Reusable FastAPI dependencies, declared once as `Annotated` aliases."""
 
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import Depends, Query
+from fastapi import Depends, Path, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import User
-from app.schemas.common import PaginationParams
+from app.schemas.common import ErrorResponse, PaginationParams
 from app.services import auth_service
 
 # Type alias so routes write `session: SessionDep` instead of repeating Depends.
@@ -17,6 +17,10 @@ SessionDep = Annotated[AsyncSession, Depends(get_db)]
 # Query() reads ?skip=&limit= into a PaginationParams model, so any list route
 # gets validated paging (422 on bad values) by adding `pagination: Pagination`.
 Pagination = Annotated[PaginationParams, Query()]
+
+# Event id path parameter shared by the events and registrations routers:
+# non-positive ids are rejected with 422 before any query.
+EventId = Annotated[int, Path(gt=0, description="Id of the event.")]
 
 # Reads "Authorization: Bearer <token>" and answers 401 itself when the header
 # is missing. tokenUrl tells Swagger's Authorize button where to log in.
@@ -44,3 +48,8 @@ async def get_current_user(
 
 # Adding `current_user: CurrentUser` to a route makes that route require login.
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+# OpenAPI documentation for the 401 that every CurrentUser route can return.
+UNAUTHORIZED: dict[int | str, dict[str, Any]] = {
+    401: {"model": ErrorResponse, "description": "Missing, invalid or expired token"}
+}

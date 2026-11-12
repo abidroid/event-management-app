@@ -1,7 +1,7 @@
 """Tests that every domain exception maps to the right HTTP status and body.
 
-The 409 registration exceptions are only raised in Phase 6, so here
-the shared handler is called directly; end-to-end 409 tests come with that phase.
+The shared handler is called directly here; end-to-end tests for each rule
+live in test_registrations.py and test_events.py.
 """
 
 import json
@@ -17,6 +17,7 @@ from app.core.exceptions import (
     EventFullError,
     EventNotFoundError,
     InvalidCredentialsError,
+    NotRegistrationOwnerError,
     RegistrationNotFoundError,
 )
 from app.main import domain_error_handler
@@ -44,6 +45,11 @@ from app.main import domain_error_handler
             "Email ada@acme.com is already registered",
         ),
         (InvalidCredentialsError(), 401, "Could not validate credentials"),
+        (
+            NotRegistrationOwnerError(3),
+            403,
+            "You can only cancel your own registrations",
+        ),
     ],
 )
 async def test_domain_error_handler_maps_status_and_detail(
@@ -66,3 +72,12 @@ async def test_invalid_credentials_response_has_www_authenticate_header() -> Non
     response = await domain_error_handler(request, InvalidCredentialsError())
 
     assert response.headers["WWW-Authenticate"] == "Bearer"
+
+
+async def test_non_401_response_has_no_www_authenticate_header() -> None:
+    """Only 401 responses ask for credentials; a 404 must not."""
+    request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+
+    response = await domain_error_handler(request, EventNotFoundError(7))
+
+    assert "WWW-Authenticate" not in response.headers

@@ -24,8 +24,6 @@ class DomainError(Exception):
             message: Human-readable explanation of the failure.
         """
         super().__init__(message)
-        # The HTTP spec requires a 401 to tell the client which auth scheme to use.
-        self.headers = {"WWW-Authenticate": "Bearer"}
         self.message = message
 
 
@@ -101,6 +99,21 @@ class CapacityBelowRegistrationsError(DomainError):
             f"Capacity {max_capacity} is below the {registered_count} people "
             "already registered"
         )
+
+
+class NotRegistrationOwnerError(DomainError):
+    """Raised when a user tries to cancel someone else's registration."""
+
+    status_code = 403
+
+    def __init__(self, registration_id: int) -> None:
+        """Build the message; the id is kept for debugging but not revealed.
+
+        Args:
+            registration_id: The registration the user tried to cancel.
+        """
+        super().__init__("You can only cancel your own registrations")
+        self.registration_id = registration_id
 
 
 class EmailAlreadyRegisteredError(DomainError):

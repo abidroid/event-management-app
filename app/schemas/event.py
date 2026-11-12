@@ -3,7 +3,14 @@
 from datetime import date, datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    computed_field,
+    field_validator,
+)
 
 # Shared field types, declared once so EventCreate and EventUpdate cannot drift
 # apart. Whitespace is stripped before the length check, so "   " is rejected.
@@ -124,6 +131,8 @@ class EventRead(BaseModel):
         created_by: Id of the user who created the event.
         created_at: When the event was created.
         updated_at: When the event was last changed.
+        registered_count: How many people are registered.
+        seats_left: How many seats are still free (computed).
     """
 
     # from_attributes lets FastAPI build this schema straight from an ORM Event.
@@ -138,3 +147,17 @@ class EventRead(BaseModel):
     created_by: int
     created_at: datetime
     updated_at: datetime
+    registered_count: int
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def seats_left(self) -> int:
+        """Return the number of free seats.
+
+        Derived from two other fields, so it is computed here rather than
+        stored or queried separately.
+
+        Returns:
+            Capacity minus current registrations.
+        """
+        return self.max_capacity - self.registered_count

@@ -4,7 +4,7 @@ Tests run against the Neon `test` branch (TEST_DATABASE_URL), never the
 development database, so PostgreSQL-specific behaviour is tested for real.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import date, timedelta
 from typing import Any
 
@@ -100,30 +100,63 @@ def user_payload() -> dict[str, str]:
 
 
 @pytest.fixture
-async def auth_headers(
-    client: AsyncClient, user_payload: dict[str, str]
-) -> dict[str, str]:
-    """Register and log in a user, returning headers that authenticate as them.
+def make_auth_headers(
+    client: AsyncClient,
+) -> Callable[[str, str], Awaitable[dict[str, str]]]:
+    """Provide a function that signs up and logs in a new user.
+
+    Registration tests need several distinct users (filling an event, cancelling
+    someone else's registration), so this is a factory rather than one user.
 
     Args:
         client: The test HTTP client.
+
+    Returns:
+        An async function taking (email, full_name) and returning an
+        `Authorization: Bearer <token>` header dict for that new user.
+    """
+
+    async def _make(email: str, full_name: str) -> dict[str, str]:
+        """Register and log in one user.
+
+        Args:
+            email: The new user's email address.
+            full_name: The new user's display name.
+
+        Returns:
+            Headers that authenticate requests as this user.
+        """
+        password = "correct-horse-battery"
+        response = await client.post(
+            "/auth/register",
+            json={"email": email, "full_name": full_name, "password": password},
+        )
+        assert response.status_code == 201
+        # The login endpoint takes OAuth2 form fields, not JSON.
+        response = await client.post(
+            "/auth/login", data={"username": email, "password": password}
+        )
+        assert response.status_code == 200
+        return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+    return _make
+
+
+@pytest.fixture
+async def auth_headers(
+    make_auth_headers: Callable[[str, str], Awaitable[dict[str, str]]],
+    user_payload: dict[str, str],
+) -> dict[str, str]:
+    """Register and log in the default user, returning headers that authenticate as them.
+
+    Args:
+        make_auth_headers: Factory that signs up and logs in a user.
         user_payload: A valid sign-up body.
 
     Returns:
         An `Authorization: Bearer <token>` header dict for requests.
     """
-    response = await client.post("/auth/register", json=user_payload)
-    assert response.status_code == 201
-    # The login endpoint takes OAuth2 form fields, not JSON.
-    response = await client.post(
-        "/auth/login",
-        data={
-            "username": user_payload["email"],
-            "password": user_payload["password"],
-        },
-    )
-    assert response.status_code == 200
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+    return await make_auth_headers(user_payload["email"], user_payload["full_name"])
 
 
 @pytest.fixture

@@ -6,7 +6,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import EventNotFoundError
+from app.core.exceptions import CapacityBelowRegistrationsError, EventNotFoundError
 from app.models import Event
 from app.schemas.event import EventCreate, EventUpdate
 
@@ -115,8 +115,14 @@ async def update_event(
 
     Raises:
         EventNotFoundError: If no event has this id.
+        CapacityBelowRegistrationsError: If the new capacity is lower than the
+            number of people already registered.
     """
     event = await _get_event_or_raise(session, event_id)
+    # Shrinking capacity below current sign-ups would leave registered people
+    # without a seat, so it is refused rather than silently overbooking.
+    if data.max_capacity is not None and data.max_capacity < event.registered_count:
+        raise CapacityBelowRegistrationsError(data.max_capacity, event.registered_count)
     # exclude_unset distinguishes "not sent" from "sent as null", so a client
     # can update one field without wiping the others.
     for field, value in data.model_dump(exclude_unset=True).items():
