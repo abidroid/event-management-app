@@ -9,6 +9,8 @@ from app.core.exceptions import (
     DuplicateRegistrationError,
     EventFullError,
     EventNotFoundError,
+    NotRegistrationOwnerError,
+    RegistrationNotFoundError,
 )
 from app.models import Event, Registration, User
 from app.services import event_service
@@ -111,3 +113,28 @@ async def list_registrations(
         .limit(limit)
     )
     return result.scalars().all()
+
+
+async def cancel_registration(
+    session: AsyncSession, registration_id: int, user: User
+) -> None:
+    """Cancel a registration that belongs to the logged-in user.
+
+    Args:
+        session: Active database session.
+        registration_id: Primary key of the registration.
+        user: The logged-in user asking to cancel.
+
+    Raises:
+        RegistrationNotFoundError: If no registration has this id.
+        NotRegistrationOwnerError: If the registration belongs to someone else.
+    """
+    registration = await session.get(Registration, registration_id)
+    if registration is None:
+        raise RegistrationNotFoundError(registration_id)
+    # Being logged in is not enough: only the person who signed up may
+    # give up the seat.
+    if registration.user_id != user.id:
+        raise NotRegistrationOwnerError(registration_id)
+    await session.delete(registration)
+    await session.commit()

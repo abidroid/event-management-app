@@ -101,6 +101,21 @@ class CapacityBelowRegistrationsError(DomainError):
         )
 
 
+class NotRegistrationOwnerError(DomainError):
+    """Raised when a user tries to cancel someone else's registration."""
+
+    status_code = 403
+
+    def __init__(self, registration_id: int) -> None:
+        """Build the message; the id is kept for debugging but not revealed.
+
+        Args:
+            registration_id: The registration the user tried to cancel.
+        """
+        super().__init__("You can only cancel your own registrations")
+        self.registration_id = registration_id
+
+
 class EmailAlreadyRegisteredError(DomainError):
     """Raised when someone signs up with an email that already has an account."""
 
