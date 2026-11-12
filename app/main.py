@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api.routes import auth, events
+from app.api.routes import auth, events, registrations
 from app.core.exceptions import DomainError
 from app.db import engine
 from app.schemas.common import HealthResponse
@@ -68,6 +68,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(DomainError, domain_error_handler)
     app.include_router(auth.router)
     app.include_router(events.router)
+    app.include_router(registrations.router)
 
     @app.get(
         "/health",
