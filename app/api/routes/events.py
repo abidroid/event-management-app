@@ -5,21 +5,17 @@ Reading events is public; creating, updating and deleting require a bearer token
 
 from collections.abc import Sequence
 from datetime import date
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 
-from app.api.deps import UNAUTHORIZED, CurrentUser, EventId, Pagination, SessionDep
+from app.api.deps import CurrentUser, EventId, Pagination, SessionDep
+from app.api.responses import CAPACITY_CONFLICT, EVENT_NOT_FOUND, UNAUTHORIZED
 from app.models import Event
-from app.schemas.common import ErrorResponse
 from app.schemas.event import EventCreate, EventRead, EventUpdate
 from app.services import event_service
 
 router = APIRouter(prefix="/events", tags=["events"])
-
-NOT_FOUND: dict[int | str, dict[str, Any]] = {
-    404: {"model": ErrorResponse, "description": "Event not found"}
-}
 
 
 @router.post(
@@ -98,7 +94,7 @@ async def list_events(
     description="Return a single event by id.",
     response_model=EventRead,
     status_code=status.HTTP_200_OK,
-    responses=NOT_FOUND,
+    responses=EVENT_NOT_FOUND,
 )
 async def get_event(event_id: EventId, session: SessionDep) -> Event:
     """Get one event.
@@ -124,11 +120,8 @@ async def get_event(event_id: EventId, session: SessionDep) -> Event:
     status_code=status.HTTP_200_OK,
     responses={
         **UNAUTHORIZED,
-        **NOT_FOUND,
-        409: {
-            "model": ErrorResponse,
-            "description": "New capacity is below the current registrations",
-        },
+        **EVENT_NOT_FOUND,
+        **CAPACITY_CONFLICT,
     },
 )
 async def update_event(
@@ -152,8 +145,10 @@ async def update_event(
     "/{event_id}",
     summary="Delete an event",
     description="Permanently delete an event. Requires login.",
+    # 204 responses never have a body, so there is no schema to document.
+    response_model=None,
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**UNAUTHORIZED, **NOT_FOUND},
+    responses={**UNAUTHORIZED, **EVENT_NOT_FOUND},
 )
 async def delete_event(
     event_id: EventId, session: SessionDep, current_user: CurrentUser

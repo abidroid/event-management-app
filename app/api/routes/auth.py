@@ -1,21 +1,17 @@
 """HTTP routes for sign-up, login and the current user's profile."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import CurrentUser, SessionDep
+from app.api.responses import BAD_LOGIN, EMAIL_TAKEN, UNAUTHORIZED
 from app.models import User
-from app.schemas.common import ErrorResponse
 from app.schemas.user import Token, UserCreate, UserRead
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-UNAUTHORIZED: dict[int | str, dict[str, Any]] = {
-    401: {"model": ErrorResponse, "description": "Missing, invalid or expired token"}
-}
 
 
 @router.post(
@@ -24,9 +20,7 @@ UNAUTHORIZED: dict[int | str, dict[str, Any]] = {
     description="Sign up with an email, full name and password. Emails are case-insensitive.",
     response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
-    responses={
-        409: {"model": ErrorResponse, "description": "Email already registered"}
-    },
+    responses=EMAIL_TAKEN,
 )
 async def register(data: UserCreate, session: SessionDep) -> User:
     """Create an account.
@@ -50,9 +44,7 @@ async def register(data: UserCreate, session: SessionDep) -> User:
     ),
     response_model=Token,
     status_code=status.HTTP_200_OK,
-    responses={
-        401: {"model": ErrorResponse, "description": "Incorrect email or password"}
-    },
+    responses=BAD_LOGIN,
 )
 async def login(
     form: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep
