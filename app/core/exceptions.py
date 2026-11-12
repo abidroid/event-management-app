@@ -24,8 +24,6 @@ class DomainError(Exception):
             message: Human-readable explanation of the failure.
         """
         super().__init__(message)
-        # The HTTP spec requires a 401 to tell the client which auth scheme to use.
-        self.headers = {"WWW-Authenticate": "Bearer"}
         self.message = message
 
 

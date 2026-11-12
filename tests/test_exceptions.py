@@ -66,3 +66,12 @@ async def test_invalid_credentials_response_has_www_authenticate_header() -> Non
     response = await domain_error_handler(request, InvalidCredentialsError())
 
     assert response.headers["WWW-Authenticate"] == "Bearer"
+
+
+async def test_non_401_response_has_no_www_authenticate_header() -> None:
+    """Only 401 responses ask for credentials; a 404 must not."""
+    request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+
+    response = await domain_error_handler(request, EventNotFoundError(7))
+
+    assert "WWW-Authenticate" not in response.headers
