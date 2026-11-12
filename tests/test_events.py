@@ -1,5 +1,6 @@
 """Tests for the /events CRUD endpoints."""
 
+from collections.abc import Awaitable, Callable
 from datetime import date, timedelta
 from typing import Any
 
@@ -31,6 +32,28 @@ async def test_new_event_has_all_seats_free(
     body = response.json()
     assert body["registered_count"] == 0
     assert body["seats_left"] == event_payload["max_capacity"]
+
+
+async def test_update_capacity_below_registrations_returns_409(
+    client: AsyncClient,
+    event: dict[str, Any],
+    auth_headers: dict[str, str],
+    make_auth_headers: Callable[[str, str], Awaitable[dict[str, str]]],
+) -> None:
+    """Capacity cannot shrink below the number of people already registered."""
+    url = f"/events/{event['id']}/registrations"
+    await client.post(url, headers=auth_headers)
+    other = await make_auth_headers("grace.hopper@acme.com", "Grace Hopper")
+    await client.post(url, headers=other)
+
+    response = await client.put(
+        f"/events/{event['id']}", json={"max_capacity": 1}, headers=auth_headers
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "Capacity 1 is below the 2 people already registered"
+    }
 
 
 async def test_create_event_missing_field_returns_422(

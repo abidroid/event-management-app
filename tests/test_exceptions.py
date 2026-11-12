@@ -1,7 +1,7 @@
 """Tests that every domain exception maps to the right HTTP status and body.
 
-The 409 registration exceptions are only raised in Phase 6, so here
-the shared handler is called directly; end-to-end 409 tests come with that phase.
+The shared handler is called directly here; end-to-end tests for each rule
+live in test_registrations.py and test_events.py.
 """
 
 import json
@@ -17,6 +17,7 @@ from app.core.exceptions import (
     EventFullError,
     EventNotFoundError,
     InvalidCredentialsError,
+    NotRegistrationOwnerError,
     RegistrationNotFoundError,
 )
 from app.main import domain_error_handler
@@ -44,6 +45,11 @@ from app.main import domain_error_handler
             "Email ada@acme.com is already registered",
         ),
         (InvalidCredentialsError(), 401, "Could not validate credentials"),
+        (
+            NotRegistrationOwnerError(3),
+            403,
+            "You can only cancel your own registrations",
+        ),
     ],
 )
 async def test_domain_error_handler_maps_status_and_detail(
