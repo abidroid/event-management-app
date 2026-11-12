@@ -2,16 +2,21 @@
 
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import User
+from app.schemas.common import PaginationParams
 from app.services import auth_service
 
 # Type alias so routes write `session: SessionDep` instead of repeating Depends.
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
+
+# Query() reads ?skip=&limit= into a PaginationParams model, so any list route
+# gets validated paging (422 on bad values) by adding `pagination: Pagination`.
+Pagination = Annotated[PaginationParams, Query()]
 
 # Reads "Authorization: Bearer <token>" and answers 401 itself when the header
 # is missing. tokenUrl tells Swagger's Authorize button where to log in.

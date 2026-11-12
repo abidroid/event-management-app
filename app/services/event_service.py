@@ -1,6 +1,7 @@
 """Business logic for creating, reading, updating and deleting events."""
 
 from collections.abc import Sequence
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,16 +51,36 @@ async def create_event(
     return event
 
 
-async def list_events(session: AsyncSession) -> Sequence[Event]:
-    """Return all events in a stable order.
+async def list_events(
+    session: AsyncSession,
+    skip: int,
+    limit: int,
+    title: str | None = None,
+    event_date: date | None = None,
+) -> Sequence[Event]:
+    """Return one page of events, optionally filtered by title and/or date.
 
     Args:
         session: Active database session.
+        skip: Number of matching events to skip.
+        limit: Maximum number of events to return.
+        title: If given, keep only events whose title contains this text
+            (case-insensitive).
+        event_date: If given, keep only events on exactly this day.
 
     Returns:
-        Events ordered by date, then id (so events on the same day never swap places).
+        Matching events ordered by date, then id.
     """
-    result = await session.execute(select(Event).order_by(Event.event_date, Event.id))
+    query = select(Event)
+    # Filters are added only when supplied, so they combine freely.
+    if title is not None:
+        query = query.where(Event.title.ilike(f"%{title}%"))
+    if event_date is not None:
+        query = query.where(Event.event_date == event_date)
+    # Ordering by id as a tie-breaker keeps pages stable: events on the same
+    # day can never swap places between two page requests.
+    query = query.order_by(Event.event_date, Event.id).offset(skip).limit(limit)
+    result = await session.execute(query)
     return result.scalars().all()
 
 
