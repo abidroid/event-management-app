@@ -2,7 +2,15 @@
 
 from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, Date, DateTime, Integer, String, func
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -18,6 +26,7 @@ class Event(Base):
         event_date: Calendar day the event takes place.
         location: Where the event is held.
         max_capacity: Maximum number of attendees; must be positive.
+        created_by: Id of the user who created the event.
         created_at: When the row was inserted (set by the database).
         updated_at: When the row was last changed (set by the database).
     """
@@ -35,6 +44,9 @@ class Event(Base):
     event_date: Mapped[date] = mapped_column(Date, index=True)
     location: Mapped[str] = mapped_column(String(200))
     max_capacity: Mapped[int] = mapped_column(Integer)
+    created_by: Mapped[int] = mapped_column(
+        ForeignKey("users.id", name="fk_events_created_by_users"), index=True
+    )
     # Timestamps come from the database clock so every row uses one time source.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

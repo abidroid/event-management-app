@@ -29,17 +29,20 @@ async def _get_event_or_raise(session: AsyncSession, event_id: int) -> Event:
     return event
 
 
-async def create_event(session: AsyncSession, data: EventCreate) -> Event:
-    """Insert a new event.
+async def create_event(
+    session: AsyncSession, data: EventCreate, created_by: int
+) -> Event:
+    """Insert a new event owned by the user who created it.
 
     Args:
         session: Active database session.
         data: Validated event fields.
+        created_by: Id of the logged-in user creating the event.
 
     Returns:
         The saved `Event`, including database-generated id and timestamps.
     """
-    event = Event(**data.model_dump())
+    event = Event(**data.model_dump(), created_by=created_by)
     session.add(event)
     await session.commit()
     # Reload so server-generated columns (created_at, updated_at) are populated.
