@@ -14,7 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
-import app.models
+from app import models  # noqa: F401  (registers every table on Base.metadata)
 from app.core.config import settings
 from app.db import Base, create_db_engine, get_db
 from app.main import app
