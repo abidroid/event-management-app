@@ -47,7 +47,9 @@ class EventUpdate(BaseModel):
     """
 
     model_config = ConfigDict(
-        json_schema_extra={"example": {"location": "Conference Room B", "max_capacity": 50}}
+        json_schema_extra={
+            "example": {"location": "Conference Room B", "max_capacity": 50}
+        }
     )
 
     title: str | None = None

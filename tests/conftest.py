@@ -14,7 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
-import app.models  # noqa: F401  (registers every table on Base.metadata)
+import app.models
 from app.core.config import settings
 from app.db import Base, create_db_engine, get_db
 from app.main import app
@@ -49,7 +49,9 @@ async def clean_tables(test_engine: AsyncEngine) -> None:
     """
     table_names = ", ".join(table.name for table in Base.metadata.sorted_tables)
     async with test_engine.begin() as connection:
-        await connection.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))
+        await connection.execute(
+            text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE")
+        )
 
 
 @pytest.fixture

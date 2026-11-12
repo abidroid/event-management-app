@@ -76,7 +76,9 @@ async def get_event(session: AsyncSession, event_id: int) -> Event:
     return await _get_event_or_raise(session, event_id)
 
 
-async def update_event(session: AsyncSession, event_id: int, data: EventUpdate) -> Event:
+async def update_event(
+    session: AsyncSession, event_id: int, data: EventUpdate
+) -> Event:
     """Apply a partial update to an event.
 
     Args:

@@ -22,6 +22,8 @@ class ErrorResponse(BaseModel):
         detail: Human-readable explanation of what went wrong.
     """
 
-    model_config = ConfigDict(json_schema_extra={"example": {"detail": "Event 42 not found"}})
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"detail": "Event 42 not found"}}
+    )
 
     detail: str

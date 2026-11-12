@@ -87,7 +87,9 @@ async def get_event(event_id: EventId, session: SessionDep) -> Event:
     status_code=status.HTTP_200_OK,
     responses=NOT_FOUND,
 )
-async def update_event(event_id: EventId, data: EventUpdate, session: SessionDep) -> Event:
+async def update_event(
+    event_id: EventId, data: EventUpdate, session: SessionDep
+) -> Event:
     """Update an event.
 
     Args:
