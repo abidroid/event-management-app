@@ -1,7 +1,7 @@
 """HTTP routes for events. Each route delegates to exactly one service function."""
 
 from collections.abc import Sequence
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Path, status
 
@@ -16,7 +16,9 @@ router = APIRouter(prefix="/events", tags=["events"])
 # Shared path parameter: non-positive ids are rejected with 422 before any query.
 EventId = Annotated[int, Path(gt=0, description="Id of the event.")]
 
-NOT_FOUND = {404: {"model": ErrorResponse, "description": "Event not found"}}
+NOT_FOUND: dict[int | str, dict[str, Any]] = {
+    404: {"model": ErrorResponse, "description": "Event not found"}
+}
 
 
 @router.post(

@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await engine.dispose()
 
 
-async def domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:
+async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Turn any domain exception raised by a service into a JSON error response.
 
     One handler for every `DomainError` subclass keeps status codes in a single
@@ -35,11 +35,16 @@ async def domain_error_handler(request: Request, exc: DomainError) -> JSONRespon
 
     Args:
         request: The request that failed (required by FastAPI's handler signature).
-        exc: The domain exception raised by a service.
+        exc: The raised exception; always a `DomainError` given how it is registered.
 
     Returns:
         A response with the exception's status code and `{"detail": message}`.
     """
+    # Starlette types handlers as accepting any Exception, so the parameter must
+    # say Exception. This handler is only registered for DomainError, so the
+    # check always passes; it narrows the type so `status_code` and `message`
+    # type-check.
+    assert isinstance(exc, DomainError)
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
 
 
