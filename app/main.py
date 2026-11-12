@@ -11,6 +11,36 @@ from app.core.exceptions import DomainError
 from app.db import engine
 from app.schemas.common import HealthResponse
 
+# Markdown shown at the top of /docs, so a first-time user knows how to log in.
+API_DESCRIPTION = """
+Internal API for creating Acme Corp events and registering attendees.
+
+**Authentication**
+
+1. Create an account with `POST /auth/register`.
+2. Click **Authorize** and log in with your email (in the `username` field)
+   and password. Swagger then sends the token with every request.
+
+Listing and viewing events is public. Creating, updating and deleting events,
+and everything to do with registrations, requires a token.
+
+**Errors**
+
+Every handled error returns `{"detail": "<message>"}` with status 401, 403,
+404 or 409. Invalid input returns 422 with FastAPI's validation details.
+"""
+
+# Order and descriptions of the tag groups in /docs.
+OPENAPI_TAGS = [
+    {"name": "auth", "description": "Sign up, log in and see who you are."},
+    {"name": "events", "description": "Create, browse, update and delete events."},
+    {
+        "name": "registrations",
+        "description": "Sign up for events, list attendees and cancel your sign-ups.",
+    },
+    {"name": "health", "description": "Check that the API is running."},
+]
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -61,8 +91,9 @@ def create_app() -> FastAPI:
     """
     app = FastAPI(
         title="Corporate Event Management API",
-        version="0.1.0",
-        description="Internal API for creating Acme Corp events and registering attendees.",
+        version="1.0.0",
+        description=API_DESCRIPTION,
+        openapi_tags=OPENAPI_TAGS,
         lifespan=lifespan,
     )
     app.add_exception_handler(DomainError, domain_error_handler)

@@ -136,7 +136,24 @@ class EventRead(BaseModel):
     """
 
     # from_attributes lets FastAPI build this schema straight from an ORM Event.
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 42,
+                "title": "Quarterly Town Hall",
+                "description": "Company-wide update from the leadership team.",
+                "event_date": "2026-12-15",
+                "location": "Main Auditorium",
+                "max_capacity": 200,
+                "created_by": 1,
+                "created_at": "2026-11-12T09:00:00Z",
+                "updated_at": "2026-11-12T09:00:00Z",
+                "registered_count": 37,
+                "seats_left": 163,
+            }
+        },
+    )
 
     id: int
     title: str
