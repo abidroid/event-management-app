@@ -1,3 +1,21 @@
+/** URL routes: every page shares the same header layout. */
+import { Route, Routes } from "react-router-dom"
+
+import { Layout } from "@/components/Layout"
+import { EventDetailPage } from "@/pages/EventDetailPage"
+import { EventsPage } from "@/pages/EventsPage"
+import { LoginPage } from "@/pages/LoginPage"
+import { RegisterPage } from "@/pages/RegisterPage"
+
 export default function App() {
-  return <h1 className="p-8 text-2xl font-semibold text-primary">Acme Events</h1>
+  return (
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<EventsPage />} />
+        <Route path="events/:id" element={<EventDetailPage />} />
+        <Route path="login" element={<LoginPage />} />
+        <Route path="register" element={<RegisterPage />} />
+      </Route>
+    </Routes>
+  )
 }
