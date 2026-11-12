@@ -83,6 +83,47 @@ async def client(test_engine: AsyncEngine) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
+def user_payload() -> dict[str, str]:
+    """Return a valid sign-up body.
+
+    Returns:
+        A JSON-ready dict accepted by POST /auth/register.
+    """
+    return {
+        "email": "ada.lovelace@acme.com",
+        "full_name": "Ada Lovelace",
+        "password": "correct-horse-battery",
+    }
+
+
+@pytest.fixture
+async def auth_headers(
+    client: AsyncClient, user_payload: dict[str, str]
+) -> dict[str, str]:
+    """Register and log in a user, returning headers that authenticate as them.
+
+    Args:
+        client: The test HTTP client.
+        user_payload: A valid sign-up body.
+
+    Returns:
+        An `Authorization: Bearer <token>` header dict for requests.
+    """
+    response = await client.post("/auth/register", json=user_payload)
+    assert response.status_code == 201
+    # The login endpoint takes OAuth2 form fields, not JSON.
+    response = await client.post(
+        "/auth/login",
+        data={
+            "username": user_payload["email"],
+            "password": user_payload["password"],
+        },
+    )
+    assert response.status_code == 200
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@pytest.fixture
 def event_payload() -> dict[str, Any]:
     """Return a valid event body dated 30 days ahead, so it never expires.
 

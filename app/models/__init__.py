@@ -5,5 +5,6 @@ tables on `Base.metadata`, which Alembic autogenerate relies on.
 """
 
 from app.models.event import Event
+from app.models.user import User
 
-__all__ = ["Event"]
+__all__ = ["Event", "User"]
