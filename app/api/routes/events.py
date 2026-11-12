@@ -4,11 +4,12 @@ Reading events is public; creating, updating and deleting require a bearer token
 """
 
 from collections.abc import Sequence
+from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Path, status
+from fastapi import APIRouter, Path, Query, status
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, Pagination, SessionDep
 from app.models import Event
 from app.schemas.common import ErrorResponse
 from app.schemas.event import EventCreate, EventRead, EventUpdate
@@ -54,20 +55,47 @@ async def create_event(
 @router.get(
     "",
     summary="List events",
-    description="Return all events ordered by date, then id.",
+    description=(
+        "Return a page of events ordered by date, then id. Use `skip` and `limit` "
+        "to page through results, `title` for a case-insensitive partial match and "
+        "`date` for an exact day. Filters and paging can be combined."
+    ),
     response_model=list[EventRead],
     status_code=status.HTTP_200_OK,
+    # No custom `responses=`: FastAPI already documents 422 with its standard
+    # validation-error schema, which is the body clients actually receive.
 )
-async def list_events(session: SessionDep) -> Sequence[Event]:
-    """List events.
+async def list_events(
+    session: SessionDep,
+    pagination: Pagination,
+    title: Annotated[
+        str | None,
+        Query(
+            min_length=1,
+            max_length=200,
+            description="Only events whose title contains this text (any case).",
+        ),
+    ] = None,
+    # Aliased so the public name stays `date` without shadowing datetime.date.
+    event_date: Annotated[
+        date | None,
+        Query(alias="date", description="Only events on this day (YYYY-MM-DD)."),
+    ] = None,
+) -> Sequence[Event]:
+    """List events, one page at a time, with optional filters.
 
     Args:
         session: Database session for this request.
+        pagination: Validated skip and limit values.
+        title: Optional title search text.
+        event_date: Optional exact event day.
 
     Returns:
-        All events in date order.
+        The requested page of matching events in date order.
     """
-    return await event_service.list_events(session)
+    return await event_service.list_events(
+        session, pagination.skip, pagination.limit, title, event_date
+    )
 
 
 @router.get(
