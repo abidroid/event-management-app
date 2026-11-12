@@ -46,7 +46,17 @@ class UserRead(BaseModel):
         created_at: When the account was created.
     """
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 1,
+                "email": "ada.lovelace@acme.com",
+                "full_name": "Ada Lovelace",
+                "created_at": "2026-11-12T09:00:00Z",
+            }
+        },
+    )
 
     id: int
     email: str
@@ -61,6 +71,15 @@ class Token(BaseModel):
         access_token: Signed JWT to send as `Authorization: Bearer <token>`.
         token_type: Always "bearer"; Swagger's Authorize button expects it.
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_type": "bearer",
+            }
+        }
+    )
 
     access_token: str
     token_type: Literal["bearer"] = "bearer"

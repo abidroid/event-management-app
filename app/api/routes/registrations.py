@@ -4,23 +4,25 @@ Every route requires login: the registrant is always the user in the token.
 """
 
 from collections.abc import Sequence
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Path, status
 
-from app.api.deps import UNAUTHORIZED, CurrentUser, EventId, Pagination, SessionDep
+from app.api.deps import CurrentUser, EventId, Pagination, SessionDep
+from app.api.responses import (
+    EVENT_NOT_FOUND,
+    NOT_OWNER,
+    REGISTRATION_CONFLICT,
+    REGISTRATION_NOT_FOUND,
+    UNAUTHORIZED,
+)
 from app.models import Registration
-from app.schemas.common import ErrorResponse
 from app.schemas.registration import RegistrationRead
 from app.services import registration_service
 
 router = APIRouter(tags=["registrations"])
 
 RegistrationId = Annotated[int, Path(gt=0, description="Id of the registration.")]
-
-EVENT_NOT_FOUND: dict[int | str, dict[str, Any]] = {
-    404: {"model": ErrorResponse, "description": "Event not found"}
-}
 
 
 @router.post(
@@ -35,7 +37,7 @@ EVENT_NOT_FOUND: dict[int | str, dict[str, Any]] = {
     responses={
         **UNAUTHORIZED,
         **EVENT_NOT_FOUND,
-        409: {"model": ErrorResponse, "description": "Already registered or full"},
+        **REGISTRATION_CONFLICT,
     },
 )
 async def register_for_event(
@@ -93,12 +95,10 @@ async def list_registrations(
     "/registrations/{registration_id}",
     summary="Cancel a registration",
     description="Cancel one of your own registrations, freeing the seat. Requires login.",
+    # 204 responses never have a body, so there is no schema to document.
+    response_model=None,
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={
-        **UNAUTHORIZED,
-        403: {"model": ErrorResponse, "description": "Not your registration"},
-        404: {"model": ErrorResponse, "description": "Registration not found"},
-    },
+    responses={**UNAUTHORIZED, **NOT_OWNER, **REGISTRATION_NOT_FOUND},
 )
 async def cancel_registration(
     registration_id: RegistrationId, session: SessionDep, current_user: CurrentUser

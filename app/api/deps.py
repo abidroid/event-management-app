@@ -1,6 +1,6 @@
 """Reusable FastAPI dependencies, declared once as `Annotated` aliases."""
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import Depends, Path, Query
 from fastapi.security import OAuth2PasswordBearer
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models import User
-from app.schemas.common import ErrorResponse, PaginationParams
+from app.schemas.common import PaginationParams
 from app.services import auth_service
 
 # Type alias so routes write `session: SessionDep` instead of repeating Depends.
@@ -48,8 +48,3 @@ async def get_current_user(
 
 # Adding `current_user: CurrentUser` to a route makes that route require login.
 CurrentUser = Annotated[User, Depends(get_current_user)]
-
-# OpenAPI documentation for the 401 that every CurrentUser route can return.
-UNAUTHORIZED: dict[int | str, dict[str, Any]] = {
-    401: {"model": ErrorResponse, "description": "Missing, invalid or expired token"}
-}
