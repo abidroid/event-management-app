@@ -4,9 +4,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import auth, events, registrations
+from app.core.config import settings
 from app.core.exceptions import DomainError
 from app.db import engine
 from app.schemas.common import HealthResponse
@@ -95,6 +97,15 @@ def create_app() -> FastAPI:
         description=API_DESCRIPTION,
         openapi_tags=OPENAPI_TAGS,
         lifespan=lifespan,
+    )
+    # The React app runs on a different origin (port 5173), so without CORS the
+    # browser would block every response. Only the listed origins are allowed.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.add_exception_handler(DomainError, domain_error_handler)
     app.include_router(auth.router)
