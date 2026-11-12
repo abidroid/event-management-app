@@ -128,7 +128,14 @@ async def get_event(event_id: EventId, session: SessionDep) -> Event:
     ),
     response_model=EventRead,
     status_code=status.HTTP_200_OK,
-    responses={**UNAUTHORIZED, **NOT_FOUND},
+    responses={
+        **UNAUTHORIZED,
+        **NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "New capacity is below the current registrations",
+        },
+    },
 )
 async def update_event(
     event_id: EventId, data: EventUpdate, session: SessionDep, current_user: CurrentUser

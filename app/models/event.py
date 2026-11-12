@@ -10,8 +10,9 @@ from sqlalchemy import (
     Integer,
     String,
     func,
+    select,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 
 from app.db import Base
 from app.models.registration import Registration
@@ -31,6 +32,7 @@ class Event(Base):
         created_at: When the row was inserted (set by the database).
         updated_at: When the row was last changed (set by the database).
         registrations: Sign-ups for this event; deleted together with it.
+        registered_count: How many people are registered (computed, not stored).
     """
 
     __tablename__ = "events"
@@ -62,4 +64,14 @@ class Event(Base):
     # to delete each row itself, and lazy loading is not possible in async code.
     registrations: Mapped[list[Registration]] = relationship(
         back_populates="event", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    # Computed as a subquery inside every SELECT that loads an event, so get,
+    # list and refresh all return an up-to-date count in one round trip and the
+    # number can never drift out of sync the way a stored counter could.
+    registered_count: Mapped[int] = column_property(
+        select(func.count(Registration.id))
+        .where(Registration.event_id == id)
+        .correlate_except(Registration)
+        .scalar_subquery()
     )

@@ -22,6 +22,17 @@ async def test_create_event_returns_201(
     assert body["updated_at"] is not None
 
 
+async def test_new_event_has_all_seats_free(
+    client: AsyncClient, event_payload: dict[str, Any], auth_headers: dict[str, str]
+) -> None:
+    """A new event has no registrations, so every seat is left."""
+    response = await client.post("/events", json=event_payload, headers=auth_headers)
+
+    body = response.json()
+    assert body["registered_count"] == 0
+    assert body["seats_left"] == event_payload["max_capacity"]
+
+
 async def test_create_event_missing_field_returns_422(
     client: AsyncClient, event_payload: dict[str, Any], auth_headers: dict[str, str]
 ) -> None:
