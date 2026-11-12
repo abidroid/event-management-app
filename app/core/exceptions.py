@@ -37,3 +37,63 @@ class EventNotFoundError(DomainError):
             event_id: The id that was looked up.
         """
         super().__init__(f"Event {event_id} not found")
+
+
+class RegistrationNotFoundError(DomainError):
+    """Raised when no registration exists with the requested id."""
+
+    status_code = 404
+
+    def __init__(self, registration_id: int) -> None:
+        """Build the message from the missing registration's id.
+
+        Args:
+            registration_id: The id that was looked up.
+        """
+        super().__init__(f"Registration {registration_id} not found")
+
+
+class DuplicateRegistrationError(DomainError):
+    """Raised when the current user is already registered for the event."""
+
+    status_code = 409
+
+    def __init__(self, event_id: int) -> None:
+        """Build the message from the event's id.
+
+        Args:
+            event_id: The event the user tried to register for again.
+        """
+        super().__init__(f"You are already registered for event {event_id}")
+
+
+class EventFullError(DomainError):
+    """Raised when an event has no seats left."""
+
+    status_code = 409
+
+    def __init__(self, event_id: int) -> None:
+        """Build the message from the full event's id.
+
+        Args:
+            event_id: The event that has reached its capacity.
+        """
+        super().__init__(f"Event {event_id} is full")
+
+
+class CapacityBelowRegistrationsError(DomainError):
+    """Raised when an update would set capacity below the current sign-ups."""
+
+    status_code = 409
+
+    def __init__(self, max_capacity: int, registered_count: int) -> None:
+        """Build the message from the requested capacity and current sign-ups.
+
+        Args:
+            max_capacity: The capacity the client asked for.
+            registered_count: How many people are already registered.
+        """
+        super().__init__(
+            f"Capacity {max_capacity} is below the {registered_count} people "
+            "already registered"
+        )
