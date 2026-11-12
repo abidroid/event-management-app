@@ -10,10 +10,12 @@ class DomainError(Exception):
 
     Attributes:
         status_code: HTTP status the exception handler responds with.
+        headers: Extra response headers, or None when none are needed.
         message: Human-readable explanation sent as the response `detail`.
     """
 
     status_code: int = 400
+    headers: dict[str, str] | None = None
 
     def __init__(self, message: str) -> None:
         """Store the message for the exception handler.
@@ -22,6 +24,8 @@ class DomainError(Exception):
             message: Human-readable explanation of the failure.
         """
         super().__init__(message)
+        # The HTTP spec requires a 401 to tell the client which auth scheme to use.
+        self.headers = {"WWW-Authenticate": "Bearer"}
         self.message = message
 
 
@@ -97,3 +101,33 @@ class CapacityBelowRegistrationsError(DomainError):
             f"Capacity {max_capacity} is below the {registered_count} people "
             "already registered"
         )
+
+
+class EmailAlreadyRegisteredError(DomainError):
+    """Raised when someone signs up with an email that already has an account."""
+
+    status_code = 409
+
+    def __init__(self, email: str) -> None:
+        """Build the message from the email that is taken.
+
+        Args:
+            email: The email address the client tried to register.
+        """
+        super().__init__(f"Email {email} is already registered")
+
+
+class InvalidCredentialsError(DomainError):
+    """Raised when a login fails or a bearer token is missing, invalid or expired."""
+
+    status_code = 401
+
+    def __init__(self, message: str = "Could not validate credentials") -> None:
+        """Store the message and the header that asks for a Bearer token.
+
+        Args:
+            message: Human-readable explanation of the failure.
+        """
+        super().__init__(message)
+        # The HTTP spec requires a 401 to tell the client which auth scheme to use.
+        self.headers = {"WWW-Authenticate": "Bearer"}

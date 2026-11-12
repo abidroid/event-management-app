@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api.routes import events
+from app.api.routes import auth, events
 from app.core.exceptions import DomainError
 from app.db import engine
 from app.schemas.common import HealthResponse
@@ -38,14 +38,19 @@ async def domain_error_handler(request: Request, exc: Exception) -> JSONResponse
         exc: The raised exception; always a `DomainError` given how it is registered.
 
     Returns:
-        A response with the exception's status code and `{"detail": message}`.
+        A response with the exception's status code, `{"detail": message}` and
+        any headers the exception declares (e.g. `WWW-Authenticate` on 401).
     """
     # Starlette types handlers as accepting any Exception, so the parameter must
     # say Exception. This handler is only registered for DomainError, so the
     # check always passes; it narrows the type so `status_code` and `message`
     # type-check.
     assert isinstance(exc, DomainError)
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+        headers=exc.headers,
+    )
 
 
 def create_app() -> FastAPI:
@@ -61,6 +66,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.add_exception_handler(DomainError, domain_error_handler)
+    app.include_router(auth.router)
     app.include_router(events.router)
 
     @app.get(

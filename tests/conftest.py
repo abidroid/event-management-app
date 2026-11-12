@@ -22,16 +22,19 @@ from app.main import app
 
 @pytest.fixture(scope="session")
 async def test_engine() -> AsyncIterator[AsyncEngine]:
-    """Create the test engine and the tables once for the whole test session.
+    """Create the test engine and rebuild the tables once for the whole session.
 
     NullPool opens a fresh connection each time instead of reusing pooled
     ones, which avoids asyncpg connections outliving the loop they were made on.
+    Tables are dropped first because create_all never alters an existing
+    table, so a new column (like events.created_by) would otherwise be missing.
 
     Yields:
         An `AsyncEngine` connected to the Neon test branch.
     """
     engine = create_db_engine(settings.test_database_url, poolclass=NullPool)
     async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.drop_all)
         await connection.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()
@@ -83,6 +86,47 @@ async def client(test_engine: AsyncEngine) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
+def user_payload() -> dict[str, str]:
+    """Return a valid sign-up body.
+
+    Returns:
+        A JSON-ready dict accepted by POST /auth/register.
+    """
+    return {
+        "email": "ada.lovelace@acme.com",
+        "full_name": "Ada Lovelace",
+        "password": "correct-horse-battery",
+    }
+
+
+@pytest.fixture
+async def auth_headers(
+    client: AsyncClient, user_payload: dict[str, str]
+) -> dict[str, str]:
+    """Register and log in a user, returning headers that authenticate as them.
+
+    Args:
+        client: The test HTTP client.
+        user_payload: A valid sign-up body.
+
+    Returns:
+        An `Authorization: Bearer <token>` header dict for requests.
+    """
+    response = await client.post("/auth/register", json=user_payload)
+    assert response.status_code == 201
+    # The login endpoint takes OAuth2 form fields, not JSON.
+    response = await client.post(
+        "/auth/login",
+        data={
+            "username": user_payload["email"],
+            "password": user_payload["password"],
+        },
+    )
+    assert response.status_code == 200
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@pytest.fixture
 def event_payload() -> dict[str, Any]:
     """Return a valid event body dated 30 days ahead, so it never expires.
 
@@ -99,16 +143,19 @@ def event_payload() -> dict[str, Any]:
 
 
 @pytest.fixture
-async def event(client: AsyncClient, event_payload: dict[str, Any]) -> dict[str, Any]:
+async def event(
+    client: AsyncClient, event_payload: dict[str, Any], auth_headers: dict[str, str]
+) -> dict[str, Any]:
     """Create one event through the API.
 
     Args:
         client: The test HTTP client.
         event_payload: A valid event body.
+        auth_headers: Headers for a logged-in user, who becomes the creator.
 
     Returns:
         The created event as returned by the API.
     """
-    response = await client.post("/events", json=event_payload)
+    response = await client.post("/events", json=event_payload, headers=auth_headers)
     assert response.status_code == 201
     return response.json()

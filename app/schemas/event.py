@@ -121,6 +121,7 @@ class EventRead(BaseModel):
         event_date: Calendar day the event takes place.
         location: Where the event is held.
         max_capacity: Maximum number of attendees.
+        created_by: Id of the user who created the event.
         created_at: When the event was created.
         updated_at: When the event was last changed.
     """
@@ -134,5 +135,6 @@ class EventRead(BaseModel):
     event_date: date
     location: str
     max_capacity: int
+    created_by: int
     created_at: datetime
     updated_at: datetime

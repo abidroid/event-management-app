@@ -25,12 +25,16 @@ from httpx import AsyncClient
     ],
 )
 async def test_create_event_invalid_field_returns_422(
-    client: AsyncClient, event_payload: dict[str, Any], field: str, value: Any
+    client: AsyncClient,
+    event_payload: dict[str, Any],
+    field: str,
+    value: Any,
+    auth_headers: dict[str, str],
 ) -> None:
     """POST /events rejects each invalid field value with 422."""
     event_payload[field] = value
 
-    response = await client.post("/events", json=event_payload)
+    response = await client.post("/events", json=event_payload, headers=auth_headers)
 
     assert response.status_code == 422
     # FastAPI reports the failing field's location, e.g. ["body", "title"].
@@ -38,35 +42,35 @@ async def test_create_event_invalid_field_returns_422(
 
 
 async def test_create_event_strips_title_whitespace(
-    client: AsyncClient, event_payload: dict[str, Any]
+    client: AsyncClient, event_payload: dict[str, Any], auth_headers: dict[str, str]
 ) -> None:
     """Surrounding whitespace in the title is trimmed before saving."""
     event_payload["title"] = "  Town Hall  "
 
-    response = await client.post("/events", json=event_payload)
+    response = await client.post("/events", json=event_payload, headers=auth_headers)
 
     assert response.status_code == 201
     assert response.json()["title"] == "Town Hall"
 
 
 async def test_create_event_dated_today_returns_201(
-    client: AsyncClient, event_payload: dict[str, Any]
+    client: AsyncClient, event_payload: dict[str, Any], auth_headers: dict[str, str]
 ) -> None:
     """An event dated today is not in the past, so it is accepted."""
     event_payload["event_date"] = str(date.today())
 
-    response = await client.post("/events", json=event_payload)
+    response = await client.post("/events", json=event_payload, headers=auth_headers)
 
     assert response.status_code == 201
 
 
 async def test_create_event_at_max_capacity_limit_returns_201(
-    client: AsyncClient, event_payload: dict[str, Any]
+    client: AsyncClient, event_payload: dict[str, Any], auth_headers: dict[str, str]
 ) -> None:
     """The upper capacity bound (10000) is inclusive."""
     event_payload["max_capacity"] = 10000
 
-    response = await client.post("/events", json=event_payload)
+    response = await client.post("/events", json=event_payload, headers=auth_headers)
 
     assert response.status_code == 201
 
@@ -76,19 +80,26 @@ async def test_create_event_at_max_capacity_limit_returns_201(
     [{"max_capacity": 0}, {"title": "   "}, {"title": None}, {"location": None}],
 )
 async def test_update_event_invalid_body_returns_422(
-    client: AsyncClient, event: dict[str, Any], body: dict[str, Any]
+    client: AsyncClient,
+    event: dict[str, Any],
+    body: dict[str, Any],
+    auth_headers: dict[str, str],
 ) -> None:
     """PUT /events/{id} applies the same rules and rejects null for required fields."""
-    response = await client.put(f"/events/{event['id']}", json=body)
+    response = await client.put(
+        f"/events/{event['id']}", json=body, headers=auth_headers
+    )
 
     assert response.status_code == 422
 
 
 async def test_update_event_can_clear_description(
-    client: AsyncClient, event: dict[str, Any]
+    client: AsyncClient, event: dict[str, Any], auth_headers: dict[str, str]
 ) -> None:
     """Description is optional, so sending null clears it."""
-    response = await client.put(f"/events/{event['id']}", json={"description": None})
+    response = await client.put(
+        f"/events/{event['id']}", json={"description": None}, headers=auth_headers
+    )
 
     assert response.status_code == 200
     assert response.json()["description"] is None

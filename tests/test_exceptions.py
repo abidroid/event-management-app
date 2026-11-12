@@ -1,6 +1,6 @@
 """Tests that every domain exception maps to the right HTTP status and body.
 
-The 409 exceptions are only raised by registration logic (Phase 6), so here
+The 409 registration exceptions are only raised in Phase 6, so here
 the shared handler is called directly; end-to-end 409 tests come with that phase.
 """
 
@@ -13,8 +13,10 @@ from app.core.exceptions import (
     CapacityBelowRegistrationsError,
     DomainError,
     DuplicateRegistrationError,
+    EmailAlreadyRegisteredError,
     EventFullError,
     EventNotFoundError,
+    InvalidCredentialsError,
     RegistrationNotFoundError,
 )
 from app.main import domain_error_handler
@@ -36,6 +38,12 @@ from app.main import domain_error_handler
             409,
             "Capacity 5 is below the 8 people already registered",
         ),
+        (
+            EmailAlreadyRegisteredError("ada@acme.com"),
+            409,
+            "Email ada@acme.com is already registered",
+        ),
+        (InvalidCredentialsError(), 401, "Could not validate credentials"),
     ],
 )
 async def test_domain_error_handler_maps_status_and_detail(
@@ -49,3 +57,12 @@ async def test_domain_error_handler_maps_status_and_detail(
 
     assert response.status_code == status_code
     assert json.loads(bytes(response.body)) == {"detail": detail}
+
+
+async def test_invalid_credentials_response_has_www_authenticate_header() -> None:
+    """A 401 tells the client to authenticate with a Bearer token."""
+    request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+
+    response = await domain_error_handler(request, InvalidCredentialsError())
+
+    assert response.headers["WWW-Authenticate"] == "Bearer"
