@@ -1,32 +1,51 @@
-# React + TypeScript + Vite
+# Acme Events — frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + Vite + TypeScript client for the Corporate Event Management API.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Tailwind CSS v4, shadcn/ui (Radix), TanStack Query, React Router,
+react-hook-form + zod, lucide-react icons and sonner toasts.
 
-## React Compiler
+## Run
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Start the backend first (from the repository root):
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```powershell
+uv run fastapi dev app/main.py
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Then, in another terminal:
+
+```powershell
+cd frontend
+copy .env.example .env   # optional: VITE_API_URL defaults to http://127.0.0.1:8000
+npm install
+npm run dev              # http://localhost:5173
+```
+
+The backend only accepts browser requests from the origins in its
+`CORS_ORIGINS` setting (default `http://localhost:5173`).
+
+## Checks
+
+```powershell
+npm run build   # type-check (tsc) and production build
+npm run lint    # oxlint
+```
+
+## Structure
+
+| Path | Purpose |
+| --- | --- |
+| `src/lib/api.ts` | Typed fetch functions for every endpoint, Bearer header, error parsing |
+| `src/lib/schemas.ts` | Zod form schemas mirroring the Pydantic rules |
+| `src/context/AuthContext.tsx` | JWT in localStorage, current user, logout on 401 |
+| `src/hooks/useRegistrationActions.ts` | Register / cancel mutations and cache refresh |
+| `src/pages/` | `LoginPage`, `RegisterPage`, `EventsPage`, `EventDetailPage` |
+| `src/components/` | `EventFormDialog`, `RegistrationForm`, `ConfirmDeleteDialog`, `Pagination`, `SeatsBadge`, `Layout` |
+| `src/components/ui/` | Generated shadcn/ui components |
+
+All server data goes through TanStack Query and every mutation invalidates the
+queries it affects. Every API error's `detail` message is shown in a toast
+(see `main.tsx`); business rules are enforced by the API, not the UI.
