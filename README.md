@@ -217,7 +217,7 @@ network to Neon, so the full suite takes several minutes.
 Result of the last full run:
 
 ```text
-PYTEST_SUMMARY_PLACEHOLDER
+====================== 112 passed in 2335.81s (0:38:55) =======================
 ```
 
 | Test file | Covers |
