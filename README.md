@@ -8,6 +8,8 @@ full and returns clear JSON errors for every broken rule.
 Built with **FastAPI**, **PostgreSQL (Neon)**, **SQLAlchemy 2.0 async** and **Pydantic v2**.
 A small React frontend in [`frontend/`](frontend/README.md) uses the same API.
 
+**Demo video:** [watch on Google Drive](https://drive.google.com/file/d/1sGcxIvRYhjLiTDebAMog0lG7Qr4Gwmg-/view?usp=sharing)
+
 **Bonus features included:** pagination (`skip`/`limit`), title and date filters,
 JWT authentication, an async database layer end to end, and a pytest suite.
 
@@ -306,6 +308,9 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
 | #7 | `feature/api-docs` | Tags, summaries, examples and error responses in Swagger |
 | #8 | `feature/frontend` | React + Vite client |
 | #9 | `docs/submission` | This README, `requirements.txt`, AI usage documentation |
+| #10 | `docs/phase-9-chat-log` | Exported chat log for phase 9 |
+| #11 | `docs/swagger-screenshots` | One Swagger screenshot per endpoint |
+| #12 | `docs/demo-video-link` | Demo video link in this README |
 
 ## AI usage
 
